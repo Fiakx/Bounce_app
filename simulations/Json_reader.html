@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualiseur d'Accélération 2D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            background: #f0f0f0;
+            color: #000;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-wrapper:hover {
+            transform: translateY(-2px);
+        }
+
+        .file-input-wrapper input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .info-section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #000;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #000;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .controls {
+            background: white;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .controls h3 {
+            color: #000;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #000;
+            min-width: 80px;
+        }
+
+        .control-group select,
+        .control-group input[type="range"] {
+            padding: 8px 12px;
+            border: 2px solid #000;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+
+        .control-group input[type="range"] {
+            min-width: 150px;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #000;
+        }
+
+        .chart-container {
+            background: white;
+            
+            padding: 30px;
+
+            margin-bottom: 20px;
+        }
+
+        .chart-container h3 {
+            color: #000;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 500px;
+        }
+
+        .zoom-controls {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #000;
+        }
+
+        .zoom-btn {
+            background: #f0f0f0;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #838383;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #000;
+            line-height: 1.4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .control-group {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="upload-section">
+            <label for="fileInput" class="file-input-wrapper">
+                Json file
+                <input type="file" id="fileInput" accept=".json">
+            </label>
+            <div id="fileName" style="margin-top: 15px;color: #000;"></div>
+        </div>
+
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            Chargement des données...
+        </div>
+
+        <div id="errorMessage" class="error" style="display: none;"></div>
+
+        <div id="dataVisualization" style="display: none;">
+            <!-- Informations sur les données -->
+            <div class="info-section">
+                <h3 style="color: #000; margin-bottom: 15px;">Informations sur les données : </h3>
+                <div class="info-grid" id="dataInfo"></div>
+            </div>
+
+            <!-- Contrôles -->
+            <div class="controls">
+                <h3>Contrôles pour la visualisation</h3>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label for="axisSelect">Axes:</label>
+                        <select id="axisSelect">
+                            <option value="all">Tous (X, Y, Z)</option>
+                            <option value="magnitude">Magnitude</option>
+                            <option value="x">X seulement</option>
+                            <option value="y">Y seulement</option>
+                            <option value="z">Z seulement</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="smoothing">Lissage:</label>
+                        <input type="range" id="smoothing" min="1" max="50" value="1">
+                        <span id="smoothingValue">1</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3 id="chartTitle">Accélération en fonction du temps</h3>
+                <div class="chart-wrapper">
+                    <canvas id="mainChart"></canvas>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="resetZoom()">Réinitialiser zoom</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rawData = null;
+        let processedData = null;
+        let mainChart = null;
+
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorMessage = document.getElementById('errorMessage');
+        const dataVisualization = document.getElementById('dataVisualization');
+        const smoothingSlider = document.getElementById('smoothing');
+        const smoothingValue = document.getElementById('smoothingValue');
+        const axisSelect = document.getElementById('axisSelect');
+
+        // Configuration Chart.js avec plugin zoom
+        Chart.register({
+            id: 'zoom',
+            beforeInit: function(chart) {
+            }
+        });
+
+        fileInput.addEventListener('change', handleFileSelect);
+        smoothingSlider.addEventListener('input', (e) => {
+            smoothingValue.textContent = e.target.value;
+            if (rawData) updateChart();
+        });
+        axisSelect.addEventListener('change', () => {
+            if (rawData) updateChart();
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            fileName.textContent = `Fichier sélectionné: ${file.name}`;
+            loadingIndicator.style.display = 'block';
+            errorMessage.style.display = 'none';
+            dataVisualization.style.display = 'none';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    rawData = data;
+                    processData(data);
+                    displayResults();
+                    loadingIndicator.style.display = 'none';
+                } catch (error) {
+                    showError('Erreur lors du parsing JSON: ' + error.message);
+                    loadingIndicator.style.display = 'none';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function processData(data) {
+            if (!data.samples || !Array.isArray(data.samples)) {
+                throw new Error('Format de données invalide: aucun échantillon trouvé');
+            }
+
+            let samples = data.samples.filter(s => s && typeof s.timestamp === 'number');
+            
+            if (samples.length === 0) {
+                throw new Error('Aucun échantillon valide trouvé');
+            }
+            
+            // trier par timestamp
+            samples.sort((a, b) => a.timestamp - b.timestamp);
+            
+            // calc la magnitude si elle n'exisste pas et ajouter le temps relatif
+            const firstTimestamp = samples[0].timestamp;
+            samples = samples.map((sample, index) => ({
+                ...sample,
+                magnitude: sample.magnitude || Math.sqrt(sample.x*sample.x + sample.y*sample.y + sample.z*sample.z),
+                relativeTime: (sample.timestamp - firstTimestamp) / 1000 // en secondes
+            }));
+            
+            processedData = {
+                device_info: data.device_info || {},
+                recording_info: data.recording_info || {},
+                samples: samples,
+                stats: calculateStatistics(samples)
+            };
+        }
+
+        function calculateStatistics(samples) {
+            const values = {
+                x: samples.map(s => s.x),
+                y: samples.map(s => s.y),
+                z: samples.map(s => s.z),
+                magnitude: samples.map(s => s.magnitude)
+            };
+
+            const stats = {};
+            Object.keys(values).forEach(key => {
+                const arr = values[key];
+                const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+                stats[key] = {
+                    min: Math.min(...arr),
+                    max: Math.max(...arr),
+                    mean: mean,
+                    std: Math.sqrt(arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / arr.length)
+                };
+            });
+
+            return stats;
+        }
+
+        function smoothData(data, windowSize) {
+            if (windowSize <= 1) return data;
+            
+            const smoothed = [];
+            for (let i = 0; i < data.length; i++) {
+                const start = Math.max(0, i - Math.floor(windowSize / 2));
+                const end = Math.min(data.length, i + Math.floor(windowSize / 2) + 1);
+                const window = data.slice(start, end);
+                const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
+                smoothed.push(avg);
+            }
+            return smoothed;
+        }
+
+        function displayResults() {
+            dataVisualization.style.display = 'block';
+            displayDataInfo();
+            createChart();
+        }
+
+        function displayDataInfo() {
+            const info = processedData.device_info;
+            const samples = processedData.samples;
+            const stats = processedData.stats;
+            
+            const duration = samples.length > 0 ? 
+                (samples[samples.length - 1].relativeTime).toFixed(1) : '0';
+            
+            const frequency = duration > 0 ? (samples.length / parseFloat(duration)).toFixed(1) : 'N/A';
+            
+            const html = `
+                <div class="info-item">
+                    <span class="info-label">Appareil:</span>
+                    <span class="info-value">${info.manufacturer || 'N/A'} ${info.model || 'N/A'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Échantillons:</span>
+                    <span class="info-value">${samples.length}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Durée:</span>
+                    <span class="info-value">${duration}s</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fréquence:</span>
+                    <span class="info-value">${frequency} Hz</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Amplitude X:</span>
+                    <span class="info-value">${stats.x.min.toFixed(2)} à ${stats.x.max.toFixed(2)} m/s²</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Amplitude Y:</span>
+                    <span class="info-value">${stats.y.min.toFixed(2)} à ${stats.y.max.toFixed(2)} m/s²</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Amplitude Z:</span>
+                    <span class="info-value">${stats.z.min.toFixed(2)} à ${stats.z.max.toFixed(2)} m/s²</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Magnitude max:</span>
+                    <span class="info-value">${stats.magnitude.max.toFixed(2)} m/s²</span>
+                </div>
+            `;//bien chiant mais c'est stylé apres
+            document.getElementById('dataInfo').innerHTML = html;
+        }
+
+        function createChart() {
+            if (mainChart) {
+                mainChart.destroy();
+            }
+
+            const samples = processedData.samples;
+            const smoothingWindow = parseInt(smoothingSlider.value);
+            const selectedAxis = axisSelect.value;
+            
+            // prepa des donnees selon la selec
+            const timeData = samples.map(s => s.relativeTime);
+            let datasets = [];
+            let chartTitle = 'Accélération en fonction du temps';
+
+            if (selectedAxis === 'all') {
+                const xData = smoothData(samples.map(s => s.x), smoothingWindow);
+                const yData = smoothData(samples.map(s => s.y), smoothingWindow);
+                const zData = smoothData(samples.map(s => s.z), smoothingWindow);
+                
+                datasets = [
+                    {
+                        label: 'X (m/s²)',
+                        data: xData.map((val, idx) => ({x: timeData[idx], y: val})),
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        tension: 0.1,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Y (m/s²)',
+                        data: yData.map((val, idx) => ({x: timeData[idx], y: val})),
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        tension: 0.1,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Z (m/s²)',
+                        data: zData.map((val, idx) => ({x: timeData[idx], y: val})),
+                        borderColor: '#45b7d1',
+                        backgroundColor: 'rgba(69, 183, 209, 0.1)',
+                        tension: 0.1,
+                        pointRadius: 0
+                    }
+                ];
+                chartTitle = 'Accélération X, Y, Z en fonction du temps';
+                
+            } else if (selectedAxis === 'magnitude') {
+                const magnitudeData = smoothData(samples.map(s => s.magnitude), smoothingWindow);
+                datasets = [{
+                    label: 'Magnitude (m/s²)',
+                    data: magnitudeData.map((val, idx) => ({x: timeData[idx], y: val})),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.1,
+                    pointRadius: 0
+                }];
+                chartTitle = 'Magnitude de l\'accélération en fonction du temps';
+                
+            } else {
+                const axisData = smoothData(samples.map(s => s[selectedAxis]), smoothingWindow);
+                const colors = {x: '#ff6b6b', y: '#4ecdc4', z: '#45b7d1'};
+                datasets = [{
+                    label: `${selectedAxis.toUpperCase()} (m/s²)`,
+                    data: axisData.map((val, idx) => ({x: timeData[idx], y: val})),
+                    borderColor: colors[selectedAxis],
+                    backgroundColor: colors[selectedAxis] + '20',
+                    tension: 0.1,
+                    pointRadius: 0
+                }];
+                chartTitle = `Accélération ${selectedAxis.toUpperCase()} en fonction du temps`;
+            }
+
+            document.getElementById('chartTitle').textContent = chartTitle;
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Temps (secondes)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Accélération (m/s²)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                                speed: 0.1
+                            }
+                        },
+                        legend: {
+                            display: datasets.length > 1
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!rawData) return;
+            createChart();
+        }
+
+        function resetZoom() {
+            if (mainChart) {
+                mainChart.resetZoom();
+            }
+        }
+    </script>
+</body>
+</html>
